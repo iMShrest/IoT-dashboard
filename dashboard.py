@@ -6,7 +6,7 @@ st.set_page_config(page_title="IoT Dashboard", layout="wide")
 
 # Sidebar
 st.sidebar.title("⚙️ Settings")
-city = st.sidebar.text_input("City", "Delhi")
+city = st.sidebar.selectbox("City", ["Delhi", "Mumbai", "Kolkata", "London"])
 
 def get_aqi_status(aqi):
     if aqi <= 50:
