@@ -28,7 +28,7 @@ if st.button("🔄 Refresh Now"):
 placeholder = st.empty()
 
 # ---------- MAIN LOOP ----------
-while True:
+
 try:
     df = pd.read_csv("data.csv")
     df = df.tail(limit)
