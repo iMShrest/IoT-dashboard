@@ -1,15 +1,13 @@
 import streamlit as st
 import pandas as pd
-import time
+import requests
 
 st.set_page_config(page_title="IoT Dashboard", layout="wide")
 
-# ---------- SIDEBAR ----------
+# Sidebar
 st.sidebar.title("⚙️ Settings")
-refresh_interval = st.sidebar.slider("Refresh rate (sec)", 1, 10, 2)
-limit = st.sidebar.slider("Max data points", 10, 200, 50)
+city = st.sidebar.text_input("City", "Delhi")
 
-# ---------- AQI STATUS ----------
 def get_aqi_status(aqi):
     if aqi <= 50:
         return "🟢 Good", "green"
@@ -18,36 +16,34 @@ def get_aqi_status(aqi):
     else:
         return "🔴 Unhealthy", "red"
 
-# ---------- HEADER ----------
-st.title("🌍 IoT Environmental Monitoring Dashboard")
+st.title("🌍 Live Air Quality Dashboard")
 
-# ---------- REFRESH BUTTON ----------
-if st.button("🔄 Refresh Now"):
+if st.button("🔄 Refresh"):
     st.rerun()
 
-placeholder = st.empty()
-
-# ---------- MAIN LOOP ----------
-
 try:
-    df = pd.read_csv("data.csv")
-    df = df.tail(limit)
+    url = f"https://api.openaq.org/v2/latest?city={city}"
+    response = requests.get(url).json()
 
-    latest = df.iloc[-1]
-    status, color = get_aqi_status(latest["aqi"])
+    measurements = response["results"][0]["measurements"]
+
+    data = {}
+    for m in measurements:
+        data[m["parameter"]] = m["value"]
+
+    # Extract values safely
+    temperature = data.get("temperature", "N/A")
+    humidity = data.get("humidity", "N/A")
+    pm25 = data.get("pm25", 0)
+
+    status, color = get_aqi_status(pm25)
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("🌡️ Temperature", f"{latest['temperature']} °C")
-    col2.metric("💧 Humidity", f"{latest['humidity']} %")
-    col3.metric("🌫️ AQI", f"{latest['aqi']}")
+    col1.metric("🌡️ Temperature", temperature)
+    col2.metric("💧 Humidity", humidity)
+    col3.metric("🌫️ PM2.5 (AQI Proxy)", pm25)
 
     st.markdown(f"### AQI Status: <span style='color:{color}'>{status}</span>", unsafe_allow_html=True)
 
-    st.line_chart(df["temperature"])
-    st.line_chart(df["humidity"])
-    st.line_chart(df["aqi"])
-
-except:
-    st.warning("No data available yet!")
-
-    time.sleep(refresh_interval)
+except Exception as e:
+    st.error("Error fetching data. Try another city.")
