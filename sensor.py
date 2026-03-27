@@ -11,9 +11,12 @@ def generate_data():
 with open("data.csv", "w", newline="") as file:
     writer = csv.writer(file)
     writer.writerow(["time", "temperature", "humidity", "aqi"])
+    file.flush()  # ✅ important
 
     while True:
         t, h, a = generate_data()
         writer.writerow([time.time(), t, h, a])
+        file.flush()  # ✅ force write to disk
+
         print(f"Temp={t}, Hum={h}, AQI={a}")
         time.sleep(2)

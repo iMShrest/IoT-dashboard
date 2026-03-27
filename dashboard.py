@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import os
 
 st.set_page_config(page_title="IoT Dashboard", layout="wide")
 
@@ -38,33 +39,37 @@ if st.button("🔄 Refresh"):
 # ==============================
 # MODE 1: SIMULATOR
 # ==============================
+import os
+
 if mode == "Simulator":
     st.subheader("📡 Simulator Mode")
 
-    try:
+    if not os.path.exists("data.csv"):
+        st.warning("data.csv not found. Run sensor.py first.")
+    else:
         df = pd.read_csv("data.csv")
-        df = df.tail(limit)
 
-        latest = df.iloc[-1]
-        status, color = get_aqi_status(latest["aqi"])
+        if df.empty:
+            st.warning("CSV is empty. Wait for sensor data...")
+        else:
+            df = df.tail(limit)
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("🌡️ Temperature", f"{latest['temperature']} °C")
-        col2.metric("💧 Humidity", f"{latest['humidity']} %")
-        col3.metric("🌫️ AQI", f"{latest['aqi']}")
+            latest = df.iloc[-1]
+            status, color = get_aqi_status(latest["aqi"])
 
-        st.markdown(
-            f"### AQI Status: <span style='color:{color}'>{status}</span>",
-            unsafe_allow_html=True
-        )
+            col1, col2, col3 = st.columns(3)
+            col1.metric("🌡️ Temperature", f"{latest['temperature']} °C")
+            col2.metric("💧 Humidity", f"{latest['humidity']} %")
+            col3.metric("🌫️ AQI", f"{latest['aqi']}")
 
-        st.line_chart(df["temperature"])
-        st.line_chart(df["humidity"])
-        st.line_chart(df["aqi"])
+            st.markdown(
+                f"### AQI Status: <span style='color:{color}'>{status}</span>",
+                unsafe_allow_html=True
+            )
 
-    except:
-        st.warning("Run sensor.py to generate data.")
-
+            st.line_chart(df["temperature"])
+            st.line_chart(df["humidity"])
+            st.line_chart(df["aqi"])
 # ==============================
 # MODE 2: LIVE API
 # ==============================
@@ -72,34 +77,25 @@ elif mode == "Live API":
     st.subheader("🌐 Live API Mode")
 
     try:
-        url = f"https://api.openaq.org/v2/latest?coordinates={lat},{lon}&radius=10000"
+        url = f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&current=pm2_5"
         response = requests.get(url).json()
 
-        if "results" not in response or len(response["results"]) == 0:
-            st.warning("No data found for this location.")
+        pm25 = response.get("current", {}).get("pm2_5", None)
+
+        if pm25 is None:
+            st.warning("No data available.")
         else:
-            measurements = response["results"][0].get("measurements", [])
+            status, color = get_aqi_status(pm25)
 
-            data = {}
-            for m in measurements:
-                data[m["parameter"]] = m["value"]
+            col1, col2, col3 = st.columns(3)
+            col1.metric("🌡️ Temperature", "N/A")
+            col2.metric("💧 Humidity", "N/A")
+            col3.metric("🌫️ PM2.5", pm25)
 
-            pm25 = data.get("pm25", None)
-
-            if pm25 is None:
-                st.warning("PM2.5 not available.")
-            else:
-                status, color = get_aqi_status(pm25)
-
-                col1, col2, col3 = st.columns(3)
-                col1.metric("🌡️ Temperature", data.get("temperature", "N/A"))
-                col2.metric("💧 Humidity", data.get("humidity", "N/A"))
-                col3.metric("🌫️ PM2.5", pm25)
-
-                st.markdown(
-                    f"### AQI Status: <span style='color:{color}'>{status}</span>",
-                    unsafe_allow_html=True
-                )
+            st.markdown(
+                f"### AQI Status: <span style='color:{color}'>{status}</span>",
+                unsafe_allow_html=True
+            )
 
     except Exception as e:
         st.error(f"API Error: {e}")
