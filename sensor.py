@@ -12,8 +12,8 @@ with open("data.csv", "w", newline="") as file:
     writer = csv.writer(file)
     writer.writerow(["time", "temperature", "humidity", "aqi"])
 
-    for i in range(50):  # simulate 50 readings
+    while True:
         t, h, a = generate_data()
         writer.writerow([time.time(), t, h, a])
-        print(f"Generated: Temp={t}, Hum={h}, AQI={a}")
-        time.sleep(1)
+        print(f"Temp={t}, Hum={h}, AQI={a}")
+        time.sleep(2)
